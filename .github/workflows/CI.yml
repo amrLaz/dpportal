@@ -1,0 +1,67 @@
+---
+name: CI
+on:
+  pull_request:
+
+jobs:
+  lint-all:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: github/super-linter@v4.2.2
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_TERRAFORM_TERRASCAN: false
+          VALIDATE_PYTHON_BLACK: false
+
+  terraform-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.2.3
+          terraform_wrapper: false
+
+      - name: terraform fmt
+        run: terraform fmt -recursive -check -diff
+
+  kitchen-test:
+    runs-on: ubuntu-latest
+    needs:
+      - lint-all
+      - terraform-fmt
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.2.3
+          terraform_wrapper: false
+
+      - name: Install Powershell modules
+        shell: pwsh
+        run: Install-Module -Name Pester -Force -SkipPublisherCheck
+
+      - name: Install Ruby dependencies
+        run: |
+          sudo apt-get -yqq install libpq-dev
+          gem install bundler
+          bundle install --jobs=4
+
+      - name: Test module
+        run: |
+          bundle exec kitchen test
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_TENANT_ID: 0be1f4ff-6c06-4d65-bd9c-598af22e0282 # ASSIE Playground
+          ARM_SUBSCRIPTION_ID: "4dd5d79c-f0d1-4bea-b498-304ec0007396" # sub-iasd-pf-management

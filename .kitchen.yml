@@ -1,0 +1,41 @@
+driver:
+  name: terraform
+  command_timeout: 1800
+  backend_configurations:
+    resource_group_name: "rg-iasd-euw-terraformBackend"
+    storage_account_name: "saiasdeuwtfstate"
+    container_name: "tfstate"
+    key: "ias-subnet"
+  upgrade_during_init: true
+
+provisioner:
+  name: terraform
+
+platforms:
+  - name: terraform
+
+suites:
+  - name: basic-example
+    driver:
+      root_module_directory: examples/basic-example/
+    verifier:
+      name: shell
+      command: pwsh -File test/integration/basic-example/invokeTests.ps1
+  - name: without-route-table
+    driver:
+      root_module_directory: examples/without-route-table/
+    verifier:
+      name: shell
+      command: pwsh -File test/integration/without-route-table/invokeTests.ps1
+  - name: private-link-endpoint-network-policies
+    driver:
+      root_module_directory: examples/private-link-endpoint-network-policies/
+    verifier:
+      name: shell
+      command: pwsh -File test/integration/private-link-endpoint-network-policies/invokeTests.ps1
+  - name: private-link-service-network-policies
+    driver:
+      root_module_directory: examples/private-link-service-network-policies/
+    verifier:
+      name: shell
+      command: pwsh -File test/integration/private-link-service-network-policies/invokeTests.ps1

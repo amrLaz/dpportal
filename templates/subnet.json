@@ -1,0 +1,76 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "serviceEndpoints": {
+      "type": "Array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "List of service endpoints to associate with the subnet"
+      }
+    },
+    "delegations": {
+      "type": "Array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "List of services to delegate to"
+      }
+    },
+    "networkSecurityGroupId": {
+      "type": "String",
+      "metadata": {
+        "description": "Network security group resource id"
+      }
+    }
+  },
+  "variables": {
+    "routeTable": {
+      "id": "[resourceId('Microsoft.Network/routeTables', '${route_table_name}')]"
+    }
+  },
+  "resources": [
+    {
+      "apiVersion": "2020-07-01",
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "name": "[concat('${vnet_name}', '/', '${subnet_name}')]",
+      "properties": {
+        "addressPrefix": "${subnet_address_prefix}",
+        "networkSecurityGroup": {
+          "id": "[parameters('networkSecurityGroupId')]"
+        },
+        "routeTable": "[if(empty('${route_table_name}'), json('null'), variables('routeTable'))]",
+        "privateEndpointNetworkPolicies": "${subnet_private_endpoint_network_policies}",
+        "privateLinkServiceNetworkPolicies": "${subnet_private_link_service_network_policies}",
+        "copy": [
+          {
+            "name": "serviceEndpoints",
+            "count": "[length(parameters('serviceEndpoints'))]",
+            "input": {
+              "service": "[parameters('serviceEndpoints')[copyIndex('serviceEndpoints')]]"
+            }
+          },
+          {
+            "name": "delegations",
+            "count": "[length(parameters('delegations'))]",
+            "input": {
+              "properties": {
+                "serviceName": "[parameters('delegations')[copyIndex('delegations')]]"
+              },
+              "name": "[format('delegation-{0}', uniqueString(parameters('delegations')[copyIndex('delegations')]))]"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "id": {
+      "type": "String",
+      "value": "[resourceId('${resource_group_name}', 'Microsoft.Network/virtualNetworks/subnets', '${vnet_name}', '${subnet_name}')]"
+    },
+    "name": {
+      "type": "String",
+      "value": "${subnet_name}"
+    }
+  }
+}
